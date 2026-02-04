@@ -1,3 +1,5 @@
+import type { ReactQuiz } from '../types/reactQuiz';
+
 export const quiz = {
   quizTitle: "AWS AI Practitioner Quiz",
   quizSynopsis:
@@ -174,7 +176,7 @@ export const quiz = {
         "Amazon Transcribe",
         "Amazon Polly",
       ],
-      correctAnswer: [2],
+      correctAnswer: "2",
       messageForCorrectAnswer: "Correct answer. Good job.",
       messageForIncorrectAnswer: "Incorrect answer. Please try again.",
       explanation: `
@@ -199,7 +201,7 @@ export const quiz = {
         "(C) By a monthly subscription fee",
         "(D) By the number of input tokens that are received and the number of output tokens that are generated",
       ],
-      correctAnswer: [4],
+      correctAnswer: "4",
       messageForCorrectAnswer: "Correct answer. Good job.",
       messageForIncorrectAnswer: "Incorrect answer. Please try again.",
       explanation: `
@@ -252,7 +254,7 @@ export const quiz = {
         "(C) Domain adaptation",
         "(D) Continuous pre-training",
       ],
-      correctAnswer: [2],
+      correctAnswer: "2",
       messageForCorrectAnswer: "Correct answer. Good job.",
       messageForIncorrectAnswer: "Incorrect answer. Please try again.",
       explanation: `
@@ -272,7 +274,7 @@ export const quiz = {
       questionType: "text",
       answerSelectionType: "single",
       answers: ["FMs", "Guardrails", "Knowledge bases", "Agents"],
-      correctAnswer: [2],
+      correctAnswer: "2",
       messageForCorrectAnswer: "Correct answer. Good job.",
       messageForIncorrectAnswer: "Incorrect answer. Please try again.",
       explanation: `
@@ -297,7 +299,7 @@ export const quiz = {
         "(C) Guardrails",
         "(D) Model evaluation",
       ],
-      correctAnswer: [1],
+      correctAnswer: "1",
       messageForCorrectAnswer: "Correct answer. Good job.",
       messageForIncorrectAnswer: "Incorrect answer. Please try again.",
       explanation: `
@@ -322,7 +324,7 @@ export const quiz = {
         "SageMaker Data Wrangler",
         "SageMaker Ground Truth",
       ],
-      correctAnswer: [1],
+      correctAnswer: "1",
       messageForCorrectAnswer: "Correct answer. Good job.",
       messageForIncorrectAnswer: "Incorrect answer. Please try again.",
       explanation: `
@@ -347,7 +349,7 @@ export const quiz = {
         "(C) Amazon Inspector",
         "(D) AWS Artifact",
       ],
-      correctAnswer: [4],
+      correctAnswer: "4",
       messageForCorrectAnswer: "Correct answer. Good job.",
       messageForIncorrectAnswer: "Incorrect answer. Please try again.",
       explanation: `
@@ -372,7 +374,7 @@ export const quiz = {
         "(C) Intellectual property (IP) infringement claims",
         "(D) Prompt injection attacks",
       ],
-      correctAnswer: [3],
+      correctAnswer: "3",
       messageForCorrectAnswer: "Correct answer. Good job.",
       messageForIncorrectAnswer: "Incorrect answer. Please try again.",
       explanation: `
@@ -397,7 +399,7 @@ export const quiz = {
         "(C) Use Amazon Augmented AI (Amazon A2I) to review responses before sending to customers.",
         "(D) Use Amazon SageMaker Clarify to quantify model toxicity on a test dataset.",
       ],
-      correctAnswer: [4],
+      correctAnswer: "4",
       messageForCorrectAnswer: "Correct answer. Good job.",
       messageForIncorrectAnswer: "Incorrect answer. Please try again.",
       explanation: `
@@ -440,4 +442,4 @@ export const quiz = {
       point: "20",
     },
   ],
-};
+} satisfies ReactQuiz;

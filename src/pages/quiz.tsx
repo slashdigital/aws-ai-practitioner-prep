@@ -1,18 +1,18 @@
 import type { ReactNode } from 'react';
+import React, { useMemo, useState } from 'react';
 import clsx from 'clsx';
-import Link from '@docusaurus/Link';
-import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import QuizFeatures from '@site/src/components/QuizFeatures';
 import Heading from '@theme/Heading';
 
 import styles from './index.module.css';
-import Quiz from "react-quiz-component";
-import React, { useState } from "react";
-import { quiz as starterQuiz } from "../data/quiz.5.domains";
-import { quiz as poQuiz } from "../data/quiz.po";
-import { quiz as fullsetQuiz } from "../data/quiz.fullset";
-import Certificate from "../components/Certificate"; // Certificate component for download
+import ThreadedQuiz from '../components/ThreadedQuiz';
+import Quiz from 'react-quiz-component';
+import { quiz as starterQuiz } from '../data/quiz.5.domains';
+import { quiz as poQuiz } from '../data/quiz.po';
+import { quiz as fullsetQuiz } from '../data/quiz.fullset';
+import { awsQuizToThreadedQuestions } from '../utils/awsQuizAdapter';
+import Certificate from '../components/Certificate';
 
 
 // https://github.com/wingkwong/react-quiz-component
@@ -66,29 +66,33 @@ function HomepageHeader({
 }
 
 export default function Home(): ReactNode {
-  const { siteConfig } = useDocusaurusContext();
   const [selectedQuiz, setSelectedQuiz] = useState<QuizType | null>(null);
+
   const [quizResult, setQuizResult] = useState<any | null>(null);
   const [showCertificate, setShowCertificate] = useState(false);
 
-  let quizData, quizDuration;
-  if (selectedQuiz === "starter") { 
-    quizData = starterQuiz; 
-    quizDuration = 3600/2; 
-  } else if (selectedQuiz === "po") { 
-    quizData = poQuiz; 
-    quizDuration = 3600; 
-  } else if (selectedQuiz === "full") { 
-    quizData = fullsetQuiz; 
-    quizDuration = 3600*2; 
-  }
+  const quizData = useMemo(() => {
+    if (selectedQuiz === 'starter') return starterQuiz;
+    if (selectedQuiz === 'po') return poQuiz;
+    if (selectedQuiz === 'full') return fullsetQuiz;
+    return null;
+  }, [selectedQuiz]);
 
-  // Handler for quiz completion
+  const quizDuration = useMemo(() => {
+    if (selectedQuiz === 'po') return 3600;
+    if (selectedQuiz === 'full') return 3600 * 2;
+    return undefined;
+  }, [selectedQuiz]);
+
+  const { questions: threadedQuestions, skipped } = useMemo(() => {
+    if (selectedQuiz !== 'starter' || !quizData) return { questions: [], skipped: 0 };
+    return awsQuizToThreadedQuestions(quizData as any, 'Starter');
+  }, [quizData, selectedQuiz]);
+
   function handleQuizComplete(result: any) {
     setQuizResult(result);
-    // Calculate pass: 70% of total points or more
     const totalPoints = result.totalPoints || (result.numberOfQuestions * 10) || 100;
-    const userPoints = result.correctPoints || result.correctPoints || 0;
+    const userPoints = result.correctPoints || result.correctAnswers || 0;
     const passed = userPoints / totalPoints >= 0.7;
     setShowCertificate(passed);
   }
@@ -109,37 +113,73 @@ export default function Home(): ReactNode {
               alignItems: "center",
             }}
           >
-            <Quiz
-              quiz={quizData}
-              timer={quizDuration}
-              allowPauseTimer={true}
-              shuffle={true}
-              shuffleAnswer={true}
-              showInstantFeedback={false}
-              showDefaultResult={true}
-              enableProgressBar={true}
-              onComplete={handleQuizComplete}
-            />
-            {showCertificate && quizResult && (
-              <Certificate
-                userName={""}
-                date={new Date().toLocaleDateString()}
-                quizTitle={quizData.quizTitle}
-                score={quizResult.correctPoints || quizResult.correctAnswers || 0}
-                total={quizResult.totalPoints || (quizResult.numberOfQuestions * 10) || 100}
-              />
+            {selectedQuiz === 'starter' ? (
+              threadedQuestions.length === 0 ? (
+                <div style={{ maxWidth: 800, width: '100%' }}>
+                  <p>No compatible questions found for Starter quiz.</p>
+                </div>
+              ) : (
+                <div style={{ maxWidth: 900, width: '100%' }}>
+                  <ThreadedQuiz
+                    title={quizData.quizTitle}
+                    questions={threadedQuestions}
+                    showCategories={true}
+                    randomize={true}
+                    hideCheckAnswer={false}
+                    autoAdvance={false}
+                    requireName={false}
+                    onExit={() => {
+                      setQuizResult(null);
+                      setShowCertificate(false);
+                      setSelectedQuiz(null);
+                    }}
+                  />
+                  {skipped > 0 && (
+                    <div style={{ marginTop: 12 }}>
+                      <small>
+                        {skipped} question(s) were skipped due to unsupported or invalid formatting.
+                      </small>
+                    </div>
+                  )}
+                </div>
+              )
+            ) : (
+              <div>
+                <Quiz
+                  quiz={quizData}
+                  timer={quizDuration}
+                  allowPauseTimer={true}
+                  shuffle={true}
+                  shuffleAnswer={true}
+                  showInstantFeedback={false}
+                  showDefaultResult={true}
+                  enableProgressBar={true}
+                  onComplete={handleQuizComplete}
+                />
+                {showCertificate && quizResult && (
+                  <Certificate
+                    userName={''}
+                    date={new Date().toLocaleDateString()}
+                    quizTitle={quizData.quizTitle}
+                    score={quizResult.correctPoints || quizResult.correctAnswers || 0}
+                    total={quizResult.totalPoints || (quizResult.numberOfQuestions * 10) || 100}
+                  />
+                )}
+              </div>
             )}
-            <button
-              className="button button--secondary button--sm"
-              style={{ margin: 24 }}
-              onClick={() => {
-                setQuizResult(null);
-                setShowCertificate(false);
-                setSelectedQuiz(null);
-              }}
-            >
-              Back to Quiz Menu
-            </button>
+            {selectedQuiz !== 'starter' && (
+              <button
+                className="button button--secondary button--sm"
+                style={{ margin: 24 }}
+                onClick={() => {
+                  setQuizResult(null);
+                  setShowCertificate(false);
+                  setSelectedQuiz(null);
+                }}
+              >
+                Back to Quiz Menu
+              </button>
+            )}
           </div>
         )}
       </main>
