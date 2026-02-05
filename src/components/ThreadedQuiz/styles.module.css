@@ -116,6 +116,21 @@
   margin-bottom: 1rem;
 }
 
+.timerPill {
+  align-self: flex-start;
+  margin-top: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  background: var(--ifm-color-emphasis-200);
+  color: var(--ifm-font-color-base);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.timerValue {
+  font-variant-numeric: tabular-nums;
+}
+
 .questionNumber {
   font-size: 0.9rem;
   color: var(--ifm-color-emphasis-700);
@@ -124,6 +139,33 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.5rem;
+}
+
+.questionMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.pointsBadge {
+  background-color: var(--ifm-color-emphasis-200);
+  color: var(--ifm-color-emphasis-800);
+  padding: 0.1rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.timerInline {
+  flex-shrink: 0;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: var(--ifm-color-emphasis-200);
+  color: var(--ifm-font-color-base);
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .categoryBadge {
@@ -138,6 +180,7 @@
 .progressBar {
   width: 100%;
   height: 8px;
+  margin-top: 0.5rem;
   background-color: var(--ifm-color-emphasis-200);
   border-radius: 4px;
   overflow: hidden;
@@ -162,6 +205,33 @@
   margin-bottom: 1.5rem;
 }
 
+.answerControlsRow {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.answerControlsLeft {
+  display: flex;
+  align-items: center;
+}
+
+.answerControlsRight {
+  display: flex;
+  align-items: center;
+}
+
+.answerControlItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--ifm-color-emphasis-800);
+  user-select: none;
+}
+
 .option {
   padding: 1rem;
   border: 1px solid var(--ifm-color-emphasis-300);
@@ -174,6 +244,11 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.option[disabled] {
+  cursor: not-allowed;
+  opacity: 0.8;
 }
 
 .optionLabel {
@@ -229,11 +304,16 @@
 
 .explanation p {
   margin-bottom: 0;
+  white-space: pre-wrap;
+}
+
+.reviewExplanationText {
+  white-space: pre-wrap;
 }
 
 .navigation {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   margin-top: 1.5rem;
 }
@@ -322,22 +402,20 @@
 }
 
 .checkButton {
-  padding: 0.6rem 1.2rem;
-  background: linear-gradient(135deg, var(--ifm-color-primary) 0%, var(--ifm-color-primary-dark) 100%);
-  color: white;
+  padding: 0.4rem 0.2rem;
+  background: transparent;
+  color: var(--ifm-color-primary);
   border: none;
-  border-radius: 4px;
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 600;
   transition: all 0.2s ease;
-  align-self: flex-start;
-  margin-bottom: 1rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  align-self: center;
+  margin: 0;
 }
 
 .checkButton:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  text-decoration: underline;
+  color: var(--ifm-color-primary-dark);
 }
 
 .resultsContainer {
@@ -597,13 +675,39 @@
   color: var(--ifm-color-emphasis-900);
 }
 
+.aboveOptionsRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.selectionHintContainer {
+  flex: 1;
+  min-height: 1.5rem;
+  display: flex;
+  align-items: center;
+}
+
 .selectionHint {
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 0.9rem;
   color: var(--ifm-color-emphasis-700);
-  padding-top: 0.5rem;
-  margin-bottom: 1rem;
   text-align: left;
+}
+
+.pointsBadge {
+  background-color: var(--ifm-color-emphasis-200);
+  color: var(--ifm-color-emphasis-800);
+  padding: 0.15rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.selectionHintPlaceholder {
+  height: 1px;
 }
 
 .reviewOptions {
