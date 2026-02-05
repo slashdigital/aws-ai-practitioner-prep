@@ -79,14 +79,17 @@ export default function Home(): ReactNode {
   }, [selectedQuiz]);
 
   const quizDuration = useMemo(() => {
-    if (selectedQuiz === 'po') return 3600;
-    if (selectedQuiz === 'full') return 3600 * 2;
+    if (selectedQuiz === 'starter') return 900; // 15 minutes
+    if (selectedQuiz === 'po') return 3600; // 1 hour
+    if (selectedQuiz === 'full') return 3600 * 2; // 2 hours
     return undefined;
   }, [selectedQuiz]);
 
   const { questions: threadedQuestions, skipped } = useMemo(() => {
-    if (selectedQuiz !== 'starter' || !quizData) return { questions: [], skipped: 0 };
-    return awsQuizToThreadedQuestions(quizData as any, 'Starter');
+    if (!quizData) return { questions: [], skipped: 0 };
+    const category = selectedQuiz === 'starter' ? 'Starter' : 
+                     selectedQuiz === 'po' ? 'PO' : 'Full Set';
+    return awsQuizToThreadedQuestions(quizData as any, category);
   }, [quizData, selectedQuiz]);
 
   function handleQuizComplete(result: any) {
@@ -113,60 +116,31 @@ export default function Home(): ReactNode {
               alignItems: "center",
             }}
           >
-            {selectedQuiz === 'starter' ? (
-              threadedQuestions.length === 0 ? (
-                <div style={{ maxWidth: 800, width: '100%' }}>
-                  <p>No compatible questions found for Starter quiz.</p>
+            <div style={{ maxWidth: 900, width: '100%' }}>
+              <ThreadedQuiz
+                title={quizData.quizTitle}
+                questions={threadedQuestions}
+                showCategories={true}
+                randomize={true}
+                hideCheckAnswer={false}
+                autoAdvance={false}
+                autoAdvanceDelay={3000}
+                timeLimitSeconds={quizDuration}
+                requireName={false}
+                onExit={() => {
+                  setQuizResult(null);
+                  setShowCertificate(false);
+                  setSelectedQuiz(null);
+                }}
+              />
+              {skipped > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <small>
+                    {skipped} question(s) were skipped due to unsupported or invalid formatting.
+                  </small>
                 </div>
-              ) : (
-                <div style={{ maxWidth: 900, width: '100%' }}>
-                  <ThreadedQuiz
-                    title={quizData.quizTitle}
-                    questions={threadedQuestions}
-                    showCategories={true}
-                    randomize={true}
-                    hideCheckAnswer={false}
-                    autoAdvance={false}
-                    requireName={false}
-                    onExit={() => {
-                      setQuizResult(null);
-                      setShowCertificate(false);
-                      setSelectedQuiz(null);
-                    }}
-                  />
-                  {skipped > 0 && (
-                    <div style={{ marginTop: 12 }}>
-                      <small>
-                        {skipped} question(s) were skipped due to unsupported or invalid formatting.
-                      </small>
-                    </div>
-                  )}
-                </div>
-              )
-            ) : (
-              <div>
-                <Quiz
-                  quiz={quizData}
-                  timer={quizDuration}
-                  allowPauseTimer={true}
-                  shuffle={true}
-                  shuffleAnswer={true}
-                  showInstantFeedback={false}
-                  showDefaultResult={true}
-                  enableProgressBar={true}
-                  onComplete={handleQuizComplete}
-                />
-                {showCertificate && quizResult && (
-                  <Certificate
-                    userName={''}
-                    date={new Date().toLocaleDateString()}
-                    quizTitle={quizData.quizTitle}
-                    score={quizResult.correctPoints || quizResult.correctAnswers || 0}
-                    total={quizResult.totalPoints || (quizResult.numberOfQuestions * 10) || 100}
-                  />
-                )}
-              </div>
-            )}
+              )}
+            </div>
             {selectedQuiz !== 'starter' && (
               <button
                 className="button button--secondary button--sm"

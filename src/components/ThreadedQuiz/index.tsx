@@ -8,6 +8,7 @@ export type QuizQuestion =
       options: string[];
       selectionType: 'single';
       correctAnswer: number;
+      points: number;
       explanation?: string;
       category?: string;
     }
@@ -16,6 +17,7 @@ export type QuizQuestion =
       options: string[];
       selectionType: 'multiple';
       correctAnswers: number[];
+      points: number;
       explanation?: string;
       category?: string;
     };
@@ -67,6 +69,7 @@ interface ThreadedQuizProps {
   autoAdvanceDelay?: number;
   requireName?: boolean;
   onExit?: () => void;
+  timeLimitSeconds?: number;
 }
 
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -89,6 +92,7 @@ export default function ThreadedQuiz({
   autoAdvanceDelay = 1500,
   requireName = true,
   onExit,
+  timeLimitSeconds,
 }: ThreadedQuizProps): React.ReactElement {
   const [shuffleKey, setShuffleKey] = useState(0);
   const [userName, setUserName] = useState('');
@@ -112,18 +116,74 @@ export default function ThreadedQuiz({
   const [selectedAnswers, setSelectedAnswers] = useState<SelectedAnswer[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
+  const [showExplanationPreference, setShowExplanationPreference] = useState(false);
   const [isAutoAdvanceEnabled, setIsAutoAdvanceEnabled] = useState(autoAdvance);
+  const [autoAdvanceTimer, setAutoAdvanceTimer] = useState<number | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(
+    typeof timeLimitSeconds === 'number' && Number.isFinite(timeLimitSeconds) ? timeLimitSeconds : null,
+  );
 
   const createInitialSelectedAnswers = (qs: QuizQuestion[]): SelectedAnswer[] => {
     return qs.map((q) => (q.selectionType === 'multiple' ? [] : -1));
   };
 
   useEffect(() => {
+    if (autoAdvanceTimer === null || autoAdvanceTimer <= 0) return;
+    const interval = setInterval(() => {
+      setAutoAdvanceTimer((prev) => (prev !== null ? Math.max(0, prev - 1) : null));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [autoAdvanceTimer]);
+
+  useEffect(() => {
     setCurrentQuestion(0);
     setSelectedAnswers(createInitialSelectedAnswers(displayedQuestions));
     setShowResults(false);
     setShowExplanation(false);
+    setRemainingSeconds(
+      typeof timeLimitSeconds === 'number' && Number.isFinite(timeLimitSeconds) ? timeLimitSeconds : null,
+    );
   }, [displayedQuestions]);
+
+  useEffect(() => {
+    if (showResults) return;
+    if (isAutoAdvanceEnabled) return;
+    if (!showExplanationPreference) return;
+    if (!isQuestionAnswered(currentQuestion)) return;
+    setShowExplanation(true);
+  }, [currentQuestion, selectedAnswers, showExplanationPreference, showResults, isAutoAdvanceEnabled]);
+
+  useEffect(() => {
+    if (!isAutoAdvanceEnabled) return;
+    setShowExplanation(false);
+    setShowExplanationPreference(false);
+  }, [isAutoAdvanceEnabled]);
+
+  useEffect(() => {
+    if (!hasStarted) return;
+    if (showResults) return;
+    if (remainingSeconds === null) return;
+    if (remainingSeconds <= 0) return;
+
+    const id = window.setInterval(() => {
+      setRemainingSeconds((prev) => {
+        if (prev === null) return prev;
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      window.clearInterval(id);
+    };
+  }, [hasStarted, remainingSeconds, showResults]);
+
+  useEffect(() => {
+    if (!hasStarted) return;
+    if (showResults) return;
+    if (remainingSeconds === null) return;
+    if (remainingSeconds > 0) return;
+    setShowResults(true);
+  }, [hasStarted, remainingSeconds, showResults]);
 
   const currentQuestionData = displayedQuestions[currentQuestion];
 
@@ -133,7 +193,8 @@ export default function ThreadedQuiz({
     if (!q) return false;
 
     if (q.selectionType === 'multiple') {
-      return Array.isArray(selected) && selected.length > 0;
+      const requiredCount = q.correctAnswers.length;
+      return Array.isArray(selected) && selected.length === requiredCount;
     }
 
     return typeof selected === 'number' && selected !== -1;
@@ -162,10 +223,12 @@ export default function ThreadedQuiz({
     if (showResults) return;
 
     const q = currentQuestionData;
-    if (!q) return;
+    if (!q || showExplanation) return;
 
     const newSelectedAnswers = [...selectedAnswers];
+    let shouldAutoAdvance = false;
     if (q.selectionType === 'multiple') {
+      const requiredCount = q.correctAnswers.length;
       const current = Array.isArray(newSelectedAnswers[currentQuestion])
         ? (newSelectedAnswers[currentQuestion] as number[])
         : [];
@@ -174,23 +237,37 @@ export default function ThreadedQuiz({
       if (set.has(optionIndex)) {
         set.delete(optionIndex);
       } else {
+        if (set.size >= requiredCount) {
+          return;
+        }
         set.add(optionIndex);
       }
 
       newSelectedAnswers[currentQuestion] = [...set].sort((a, b) => a - b);
+
+      shouldAutoAdvance = set.size === requiredCount;
     } else {
       newSelectedAnswers[currentQuestion] = optionIndex;
+
+      shouldAutoAdvance = true;
     }
 
     setSelectedAnswers(newSelectedAnswers);
 
-    if (isAutoAdvanceEnabled) {
+    if (shouldAutoAdvance && showExplanationPreference) {
+      setShowExplanation(true);
+    }
+
+    if (isAutoAdvanceEnabled && shouldAutoAdvance) {
+      setAutoAdvanceTimer(Math.floor(autoAdvanceDelay / 1000));
       setTimeout(() => {
         if (currentQuestion < displayedQuestions.length - 1) {
           setCurrentQuestion(currentQuestion + 1);
           setShowExplanation(false);
+          setAutoAdvanceTimer(null);
         } else {
           setShowResults(true);
+          setAutoAdvanceTimer(null);
         }
       }, autoAdvanceDelay);
     }
@@ -200,8 +277,10 @@ export default function ThreadedQuiz({
     if (currentQuestion < displayedQuestions.length -  1) {
       setCurrentQuestion(currentQuestion + 1);
       setShowExplanation(false);
+      setAutoAdvanceTimer(null);
     } else {
       setShowResults(true);
+      setAutoAdvanceTimer(null);
     }
   };
 
@@ -209,6 +288,7 @@ export default function ThreadedQuiz({
     if (currentQuestion > 0) {
       setCurrentQuestion(currentQuestion - 1);
       setShowExplanation(false);
+      setAutoAdvanceTimer(null);
     }
   };
 
@@ -223,18 +303,23 @@ export default function ThreadedQuiz({
     }
   };
 
-  const calculateScore = () => {
-    return displayedQuestions.reduce((score, _q, index) => {
-      return isQuestionCorrect(index) ? score + 1 : score;
+  const calculateTotalPoints = () => {
+    return displayedQuestions.reduce((sum, q) => sum + (Number.isFinite(q.points) ? q.points : 0), 0);
+  };
+
+  const calculateCorrectPoints = () => {
+    return displayedQuestions.reduce((sum, q, index) => {
+      return isQuestionCorrect(index) ? sum + (Number.isFinite(q.points) ? q.points : 0) : sum;
     }, 0);
   };
 
-  const score = calculateScore();
+  const totalPoints = calculateTotalPoints();
+  const correctPoints = calculateCorrectPoints();
   const isAnswered = isQuestionAnswered(currentQuestion);
   const isCorrect = isQuestionCorrect(currentQuestion);
 
   const getPerformanceFeedback = () => {
-    const percentage = Math.round((score / displayedQuestions.length) * 100);
+    const percentage = totalPoints > 0 ? Math.round((correctPoints / totalPoints) * 100) : 0;
     const name = requireName && userName ? userName : '';
 
     if (percentage === 100) {
@@ -310,6 +395,13 @@ export default function ThreadedQuiz({
     return getQuestionsInCurrentCategory().length;
   };
 
+  const formatRemainingTime = (seconds: number): string => {
+    const safeSeconds = Math.max(0, seconds);
+    const mm = Math.floor(safeSeconds / 60);
+    const ss = safeSeconds % 60;
+    return `${mm.toString().padStart(2, '0')}:${ss.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className={styles.quizContainer}>
       {onExit ? (
@@ -344,10 +436,17 @@ export default function ThreadedQuiz({
         <div className={styles.questionContainer}>
           <div className={styles.questionHeader}>
             <span className={styles.questionNumber}>
-              Question {currentQuestion + 1} of {displayedQuestions.length}
-              {showCategories && (
-                <span className={styles.categoryBadge}>
-                  {getCurrentCategory()} ({getQuestionNumberInCategory()} of {getTotalQuestionsInCategory()})
+              <span className={styles.questionMeta}>
+                Question {currentQuestion + 1} of {displayedQuestions.length}
+                {showCategories && getCurrentCategory() !== 'Starter' && (
+                  <span className={styles.categoryBadge}>
+                    {getCurrentCategory()} ({getQuestionNumberInCategory()} of {getTotalQuestionsInCategory()})
+                  </span>
+                )}
+              </span>
+              {remainingSeconds !== null && (
+                <span className={styles.timerInline}>
+                  Time left: <span className={styles.timerValue}>{formatRemainingTime(remainingSeconds)}</span>
                 </span>
               )}
             </span>
@@ -360,8 +459,19 @@ export default function ThreadedQuiz({
           </div>
 
           <h3 className={styles.question}>{stripTrailingSelectInstruction(currentQuestionData.question)}</h3>
-
-          {getSelectionHint() && <div className={styles.selectionHint}>{getSelectionHint()}</div>}
+          
+          <div className={styles.aboveOptionsRow}>
+            <div className={styles.selectionHintContainer}>
+              {getSelectionHint() ? (
+                <div className={styles.selectionHint}>{getSelectionHint()}</div>
+              ) : (
+                <div className={styles.selectionHintPlaceholder} />
+              )}
+            </div>
+            <div className={styles.pointsBadge}>
+              {currentQuestionData.points} {currentQuestionData.points === 1 ? 'pt' : 'pts'}
+            </div>
+          </div>
 
           <div className={styles.options}>
             {currentQuestionData.options.map((option, index) => {
@@ -417,13 +527,44 @@ export default function ThreadedQuiz({
             })}
           </div>
 
-          {isAnswered && !showExplanation && !hideCheckAnswer && (
-            <button className={styles.checkButton} onClick={() => setShowExplanation(true)}>
-              Check Answer
-            </button>
-          )}
+          <div className={styles.answerControlsRow}>
+            <div className={styles.answerControlsLeft}>
+              {!hideCheckAnswer && (
+                <label className={styles.answerControlItem}>
+                  <input
+                    type="checkbox"
+                    checked={showExplanationPreference}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setShowExplanationPreference(checked);
+                      if (!checked) setShowExplanation(false);
+                      if (checked && isAnswered) setShowExplanation(true);
+                    }}
+                  />
+                  <span>Check answer</span>
+                </label>
+              )}
+            </div>
+            <div className={styles.answerControlsRight}>
+              <label className={styles.answerControlItem}>
+                <input
+                  type="checkbox"
+                  checked={isAutoAdvanceEnabled}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setIsAutoAdvanceEnabled(checked);
+                    if (checked) {
+                      setShowExplanation(false);
+                      setShowExplanationPreference(false);
+                    }
+                  }}
+                />
+                <span>Auto next</span>
+              </label>
+            </div>
+          </div>
 
-          {showExplanation && currentQuestionData.explanation && (
+          {showExplanation && !isAutoAdvanceEnabled && currentQuestionData.explanation && (
             <div className={styles.explanation}>
               <h4>{isCorrect ? '✅ Correct!' : '❌ Incorrect'}</h4>
               <p>{currentQuestionData.explanation}</p>
@@ -431,32 +572,14 @@ export default function ThreadedQuiz({
           )}
 
           <div className={styles.navigation}>
-            <button
-              className={styles.navButton}
-              onClick={handlePrevious}
-              disabled={currentQuestion === 0}
-            >
-              Previous
-            </button>
             <div className={styles.navRight}>
-              {autoAdvance && (
-                <label className={styles.switchContainer}>
-                  <input
-                    type="checkbox"
-                    checked={isAutoAdvanceEnabled}
-                    onChange={(e) => setIsAutoAdvanceEnabled(e.target.checked)}
-                    className={styles.switchInput}
-                  />
-                  <span className={styles.switchSlider}></span>
-                  <span className={styles.switchLabel}>Auto</span>
-                </label>
-              )}
               <button
                 className={styles.navButton}
                 onClick={handleNext}
                 disabled={!isAnswered}
               >
                 {currentQuestion === displayedQuestions.length - 1 ? 'Finish' : 'Next'}
+                {autoAdvanceTimer !== null && autoAdvanceTimer > 0 && ` (${autoAdvanceTimer})`}
               </button>
             </div>
           </div>
@@ -480,11 +603,11 @@ export default function ThreadedQuiz({
             <div className={styles.mainScore}>
               <div className={styles.scoreCircle}>
                 <span className={styles.scorePercentage}>
-                  {Math.round((score / displayedQuestions.length) * 100)}%
+                  {totalPoints > 0 ? Math.round((correctPoints / totalPoints) * 100) : 0}%
                 </span>
               </div>
               <p className={styles.scoreText}>
-                {score} / {displayedQuestions.length} correct
+                {correctPoints} / {totalPoints} points
               </p>
             </div>
 
@@ -494,11 +617,20 @@ export default function ThreadedQuiz({
                 <div className={styles.categoryGrid}>
                   {categories.map((category) => {
                     const categoryQuestions = displayedQuestions.filter((q) => (q.category || 'General') === category);
-                    const categoryCorrect = categoryQuestions.reduce((count, q) => {
+                    const categoryTotalPoints = categoryQuestions.reduce(
+                      (sum, q) => sum + (Number.isFinite(q.points) ? q.points : 0),
+                      0,
+                    );
+                    const categoryCorrectPoints = categoryQuestions.reduce((sum, q) => {
                       const questionIndex = displayedQuestions.findIndex((question) => question === q);
-                      return isQuestionCorrect(questionIndex) ? count + 1 : count;
+                      return isQuestionCorrect(questionIndex)
+                        ? sum + (Number.isFinite(q.points) ? q.points : 0)
+                        : sum;
                     }, 0);
-                    const categoryPercentage = Math.round((categoryCorrect / categoryQuestions.length) * 100);
+                    const categoryPercentage =
+                      categoryTotalPoints > 0
+                        ? Math.round((categoryCorrectPoints / categoryTotalPoints) * 100)
+                        : 0;
 
                     return (
                       <div key={category} className={styles.categoryItem}>
@@ -513,7 +645,7 @@ export default function ThreadedQuiz({
                           />
                         </div>
                         <span className={styles.categoryCount}>
-                          {categoryCorrect}/{categoryQuestions.length}
+                          {categoryCorrectPoints}/{categoryTotalPoints}
                         </span>
                       </div>
                     );

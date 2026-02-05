@@ -6,6 +6,7 @@ export type AwsQuizQuestion = {
   explanation?: string;
   messageForCorrectAnswer?: string;
   messageForIncorrectAnswer?: string;
+  point?: string | number;
 };
 
 export type AwsQuiz = {
@@ -19,6 +20,7 @@ export type ThreadedQuizQuestion =
       options: string[];
       selectionType: 'single';
       correctAnswer: number;
+      points: number;
       explanation?: string;
       category?: string;
     }
@@ -27,9 +29,23 @@ export type ThreadedQuizQuestion =
       options: string[];
       selectionType: 'multiple';
       correctAnswers: number[];
+      points: number;
       explanation?: string;
       category?: string;
     };
+
+function coercePoints(point: AwsQuizQuestion['point']): number {
+  if (typeof point === 'number') {
+    return Number.isFinite(point) ? point : 1;
+  }
+
+  if (typeof point === 'string') {
+    const parsed = Number.parseInt(point, 10);
+    return Number.isFinite(parsed) ? parsed : 1;
+  }
+
+  return 1;
+}
 
 function coerceSingleCorrectAnswerIndex(correctAnswer: AwsQuizQuestion['correctAnswer']): number | null {
   if (Array.isArray(correctAnswer)) return null;
@@ -90,6 +106,7 @@ export function awsQuizToThreadedQuestions(awsQuiz: AwsQuiz, category: string): 
     }
 
     const explanation = q.explanation || q.messageForCorrectAnswer || q.messageForIncorrectAnswer;
+    const points = coercePoints(q.point);
 
     const selectionType = q.answerSelectionType || (Array.isArray(q.correctAnswer) ? 'multiple' : 'single');
 
@@ -112,6 +129,7 @@ export function awsQuizToThreadedQuestions(awsQuiz: AwsQuiz, category: string): 
           options: q.answers,
           selectionType: 'multiple',
           correctAnswers: correctIndices,
+          points,
           explanation,
           category,
         },
@@ -135,6 +153,7 @@ export function awsQuizToThreadedQuestions(awsQuiz: AwsQuiz, category: string): 
         options: q.answers,
         selectionType: 'single',
         correctAnswer: correctIndex,
+        points,
         explanation,
         category,
       },
